@@ -1,0 +1,27 @@
+{
+    "name": "gather",
+    "private": true,
+    "type": "module",
+    "workspaces": [
+        "apps/*",
+        "packages/*"
+    ],
+    "engines": {
+        "node": ">=22.12.0"
+    },
+    "scripts": {
+        "dev": "npm run build -w packages/contracts && concurrently -n web,api -c green,blue \"npm run dev -w apps/web\" \"npm run dev -w apps/api\"",
+        "build": "npm run build -w packages/contracts && npm run build -w apps/web && npm run build -w apps/api",
+        "test": "npm run build -w packages/contracts && vitest run",
+        "test:e2e": "playwright test",
+        "lint": "npm run lint -w apps/web && tsc --noEmit -p apps/api/tsconfig.json && tsc -p tools/tsconfig.json",
+        "start:api": "npm run start -w apps/api"
+    },
+    "devDependencies": {
+        "@playwright/test": "^1.55.0",
+        "@types/node": "^24.19.2",
+        "concurrently": "^9.2.0",
+        "typescript": "~6.0.3",
+        "vitest": "^5.0.5"
+    }
+}

@@ -1,0 +1,11 @@
+[build]
+  command = "npm run build -w packages/contracts && npm run build -w apps/web"
+  publish = "apps/web/dist"
+
+[build.environment]
+  NODE_VERSION = "24"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

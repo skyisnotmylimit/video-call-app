@@ -1,0 +1,29 @@
+{
+    "name": "@gather/api",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "tsx watch src/main.ts",
+        "build": "node --experimental-strip-types ../../tools/clean-build.ts && tsc -p tsconfig.json",
+        "start": "node dist/main.js"
+    },
+    "dependencies": {
+        "@gather/contracts": "*",
+        "@nestjs/common": "^11.1.0",
+        "@nestjs/core": "^11.1.0",
+        "@nestjs/config": "^4.0.0",
+        "@nestjs/platform-express": "^11.1.0",
+        "@nestjs/throttler": "^6.4.0",
+        "express": "^5.1.0",
+        "livekit-server-sdk": "^2.13.0",
+        "reflect-metadata": "^0.2.2",
+        "rxjs": "^7.8.2"
+    },
+    "devDependencies": {
+        "@types/node": "^24.19.2",
+        "@types/express": "^5.0.0",
+        "tsx": "^4.20.0",
+        "typescript": "~6.0.3"
+    }
+}

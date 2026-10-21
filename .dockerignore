@@ -1,0 +1,10 @@
+node_modules
+**/node_modules
+**/dist
+.git
+.vscode
+.reports
+test-results
+playwright-report
+**/.env
+**/.env.*

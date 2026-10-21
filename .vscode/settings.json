@@ -1,0 +1,7 @@
+{
+    "typescript.tsdk": "node_modules/typescript/lib",
+    "typescript.enablePromptUseWorkspaceTsdk": true,
+    "airun.settings": {
+        "workspaceId": "9029069b-65a1-48d6-b5f7-01b2707f5fbf"
+    }
+}
