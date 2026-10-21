@@ -80,6 +80,12 @@ Vercel Function duration, concurrency, and plan limits apply to API requests, bu
 
 Local validation does not publish a deployment. Your Git repository, Vercel account settings, cloud environment variables, and successful deployment remain necessary.
 
+### Backend Module Format
+
+The NestJS package intentionally uses `"type": "commonjs"` with TypeScript's `NodeNext` compilation. This emits a CommonJS-compatible `main.js`, matching the deployed Vercel loader even when its function bundle does not retain an ESM package scope. The frontend and contracts package remain ESM; the backend can load the contracts with the required Node.js 24 runtime.
+
+If runtime logs show `Cannot use import statement outside a module` at `main.js`, the failure happens during backend startup, before LiveKit credentials are read. Deploy the current backend package configuration and rebuild without the previous build cache to replace the stale ESM artifact. Confirm `/api/health` returns 200 before testing meeting creation.
+
 ## Backend: Render, Railway, or a Container Host
 
 - Build: `npm ci && npm run build -w packages/contracts && npm run build -w apps/api`
