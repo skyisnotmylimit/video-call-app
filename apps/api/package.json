@@ -5,7 +5,7 @@
     "type": "commonjs",
     "scripts": {
         "dev": "tsx watch src/main.ts",
-        "build": "node --experimental-strip-types ../../tools/clean-build.ts && tsc -p tsconfig.json",
+        "build": "node --experimental-strip-types ../../tools/clean-build.ts && tsc -p tsconfig.json && node --no-experimental-require-module -e \"require('./dist/app.module.js')\"",
         "start": "node dist/main.js"
     },
     "dependencies": {

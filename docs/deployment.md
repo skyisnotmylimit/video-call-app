@@ -82,9 +82,11 @@ Local validation does not publish a deployment. Your Git repository, Vercel acco
 
 ### Backend Module Format
 
-The NestJS package intentionally uses `"type": "commonjs"` with TypeScript's `NodeNext` compilation. This emits a CommonJS-compatible `main.js`, matching the deployed Vercel loader even when its function bundle does not retain an ESM package scope. The frontend and contracts package remain ESM; the backend can load the contracts with the required Node.js 24 runtime.
+The NestJS and shared contracts packages intentionally use `"type": "commonjs"` with TypeScript's `NodeNext` compilation. This emits CommonJS-compatible JavaScript throughout the backend's first-party dependency graph, matching the deployed Vercel loader. The frontend remains ESM, and Vite bundles the CommonJS contracts for browser use. Its `optimizeDeps.include` explicitly lists `@gather/contracts` so the linked workspace package is also converted to browser-compatible ESM during development.
 
 If runtime logs show `Cannot use import statement outside a module` at `main.js`, the failure happens during backend startup, before LiveKit credentials are read. Deploy the current backend package configuration and rebuild without the previous build cache to replace the stale ESM artifact. Confirm `/api/health` returns 200 before testing meeting creation.
+
+An `ERR_REQUIRE_ESM` error naming `packages/contracts/dist/index.js` means the backend was rebuilt as CommonJS but the shared contracts were still ESM. Deploy both package configurations together. Local Node.js 24 can hide this incompatibility by supporting `require(ESM)` while the deployed loader rejects it. The backend build now loads its entire module graph with `--no-experimental-require-module`, catching this failure during compilation/deployment rather than at request time.
 
 ## Backend: Render, Railway, or a Container Host
 

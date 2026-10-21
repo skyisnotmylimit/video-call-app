@@ -3,6 +3,9 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   plugins: [react()],
+  optimizeDeps: {
+    include: ['@gather/contracts'],
+  },
   server: {
     port: 5173,
     strictPort: true,
