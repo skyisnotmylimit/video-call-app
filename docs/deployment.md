@@ -1,62 +1,84 @@
 # Deployment
 
-Run all commands from the repository root. Deploy the Vite frontend and NestJS backend separately. LiveKit Cloud, or your own LiveKit server, carries the audio/video; the API only issues room-scoped tokens.
+Run all commands from the repository root. The recommended deployment is one Vercel project containing the Vite and NestJS services. LiveKit Cloud, or your own LiveKit server, carries the audio/video; the API only issues room-scoped tokens.
 
-## Recommended: Both Apps on Vercel
+## Recommended: One Vercel Project with Services
 
-Vercel supports both [Vite](https://vercel.com/docs/frameworks/frontend/vite) and [NestJS](https://vercel.com/docs/frameworks/backend/nestjs). Deploy this repository as two Vercel projects, following its [monorepo workflow](https://vercel.com/docs/monorepos). The NestJS API becomes a Vercel Function; LiveKit handles the persistent media connections, not Vercel.
+The root `vercel.json` uses [Vercel Services](https://vercel.com/docs/services), currently in Beta, to build both apps independently in one deployment with shared environment settings and one public domain. It replaces the previous per-app configurations and two-project deployment instructions. LiveKit remains external; it is not a Vercel service.
 
-### 1. Connect the Repository
+### Services, Public Routing, and Bindings
 
-Push the project to your Git provider without local environment files. Import the same repository twice in Vercel:
+| Service | Source root | Framework | Public exposure |
+| --- | --- | --- | --- |
+| `api` | `apps/api` | NestJS | `/api/*` |
+| `web` | `apps/web` | Vite | All remaining paths |
 
-| Setting | Backend project | Frontend project |
-| --- | --- | --- |
-| Suggested name | `gather-api` | `gather-web` |
-| Root Directory | `apps/api` | `apps/web` |
-| Framework | NestJS | Vite |
-| Node.js version | 24.x | 24.x |
-| Configuration | `apps/api/vercel.json` | `apps/web/vercel.json` |
-| Output Directory | Leave framework default | `dist` |
+Specific API rewrites run before the frontend catch-all. Vercel preserves the original request path: `/api/health` reaches NestJS as `/api/health`, matching `app.setGlobalPrefix('api')`. Unknown API routes return backend 404 responses rather than frontend HTML.
 
-For **both projects**, enable **Include source files outside of the Root Directory in the Build Step** in the Root Directory settings. The install/build commands intentionally run from the repository root so npm workspaces, `packages/contracts`, and `tools` are available. If this setting is not enabled, builds can fail to locate shared files. Keep the file-provided install/build commands rather than overriding them with the whole-repository build command.
+No service-level catch-all rewrite to `index.html` is needed: the current app navigates at `/` with meeting codes in `?room=...`. Such a rewrite can mask JavaScript modules during Vercel local development. Static files use normal Vite asset routing. If path-based client routing is introduced later, add and test an asset-safe fallback rather than rewriting every frontend request to HTML.
 
-### 2. Configure and Deploy the Backend
+**No internal bindings are declared.** This was explicitly confirmed for the current architecture: the caller is browser JavaScript, not a function in `web`. The browser calls the public same-origin `/api/meetings` endpoint. Runtime binding variables cannot be used by static Vite bundles, during builds, or by middleware. Do not create or manually set an `API_URL` binding variable when there is no server-side consumer.
 
-Add these values in the backend project's Environment Variables settings for Production:
+If a future feature introduces a server-side function that privately calls another service, declare all four binding fields (`type`, `service`, `format`, `env`) on that caller, and use the generated URL at function runtime. An internal-only API would also need a server-side proxy for the browser; it is not the current setup.
+
+### 1. Create One Vercel Project
+
+Push the repository to your Git provider without local environment files. Import it once into Vercel:
+
+- Root Directory: the repository root, not either app subdirectory.
+- Framework preset: Services, or allow detection from the root configuration.
+- Node.js version: 24.x.
+- Do not add top-level build/install/output overrides; those settings belong to each service in `vercel.json`.
+- Keep the repository-wide workspace files, `packages/contracts`, and `tools` available during builds.
+
+Each service's install command runs `npm ci` from the workspace root, and its build command compiles the shared contracts before its own app. The `web` output directory is `dist`, relative to its service root. Vercel detects the backend using its explicit `src/main.ts` entrypoint. There is no need for a custom serverless handler, Docker deployment, separate start command, or manual `PORT` setting on Vercel.
+
+### 2. Set Environment Variables
+
+Add these values in the single project's Environment Variables settings for each deployment environment you use:
 
 ```dotenv
 LIVEKIT_URL=wss://your-project.livekit.cloud
 LIVEKIT_API_KEY=your-actual-api-key
 LIVEKIT_API_SECRET=your-actual-api-secret
-FRONTEND_URL=https://your-frontend-domain.vercel.app
 ```
 
-Use your actual LiveKit values, not the example placeholders. `FRONTEND_URL` must be the exact frontend production origin without a trailing slash. If the frontend domain has not been assigned yet, update this value and redeploy the backend after creating the frontend project. Do not upload your local environment file or set these secrets in the frontend project.
+Keep these values server-side. Shared project environment settings do not mean secrets should be embedded in the frontend; never prefix LiveKit keys or secrets with `VITE_`. Do not commit local environment files. Rotate any credentials accidentally disclosed in chat, logs, or source control.
 
-Deploy the backend and check `https://your-backend-domain.vercel.app/api/health`; it should return `{"status":"ok"}`. Vercel manages the runtime and detects the existing `src/main.ts` NestJS entrypoint. No Docker deployment, custom handler, static output directory override, start command, or manually configured `PORT` is required for this Vercel project.
+Remove the old absolute `VITE_API_BASE_URL` value from the earlier two-project setup, or set it to `/api`. When it is unset, the existing client already defaults to `/api`. It must not point to localhost, an old backend project, or an internal binding URL.
 
-### 3. Configure and Deploy the Frontend
+The frontend and API share an origin, so their normal requests do not require cross-origin permissions. `FRONTEND_URL` is only needed to configure CORS for separately hosted clients; if used, set it to an exact trusted origin without a trailing slash. Do not allow arbitrary preview-host wildcards.
 
-Set the following public variable in the frontend project **before building**:
+Environment changes affect new deployments. Redeploy after changing them.
 
-```dotenv
-VITE_API_BASE_URL=https://your-backend-domain.vercel.app/api
+### 3. Develop with Actual Service Routing
+
+```sh
+npm ci
+npm run dev:vercel
 ```
 
-Deploy the frontend. Its configuration compiles the contracts first, builds Vite, publishes `dist`, and provides the SPA fallback. Never put LiveKit API credentials in `VITE_` variables: those values are embedded in the browser bundle.
+This builds contracts and runs the pinned Vercel CLI's `vercel dev --local`, starting the services together without cloud authentication. The CLI prints the public origin, normally `http://localhost:3000`. The backend still supports its ignored local environment file. Local mode does not download cloud environment values. Use authenticated `vercel dev` if you want Vercel to load linked project settings and cloud variables. Bindings, if added later, are injected by Vercel; do not synthesize them yourself.
 
-Confirm the backend's `FRONTEND_URL` matches the assigned frontend production origin and redeploy the backend if necessary. Vercel environment-variable changes affect new deployments; updating a value does not update an existing deployment.
+The original `npm run dev` remains available for two-port framework development. Its localhost proxy is development-only and is not used for Vercel's public service routing.
 
-### 4. Verify the Production URLs
+To run the browser suite against the running services, set `PLAYWRIGHT_BASE_URL` to the printed Vercel origin and run `npm run test:e2e`. For example, in PowerShell:
 
-Open the public frontend production URL, create a meeting, and join its invitation link from another browser/device. Check audio/video, mute controls, screen sharing, and leave/rejoin. An HTTP health response does not verify actual media transport.
+```powershell
+$env:PLAYWRIGHT_BASE_URL = 'http://localhost:3000'
+npm run test:e2e
+Remove-Item Env:PLAYWRIGHT_BASE_URL
+```
 
-Use stable production domains for this first deployment. Preview deployments have different origins and may have deployment protection enabled; they require separate API URL/CORS settings and, where applicable, protection bypass setup. Do not solve this by allowing arbitrary `*.vercel.app` origins or placing a protection-bypass secret in the frontend bundle. Ensure the API production domain is accessible to the users who will call it.
+### 4. Deploy and Verify
 
-Vercel Function duration, concurrency, and plan limits apply to API requests, but meeting media does not pass through these functions. The current in-memory API throttle is per instance and is not a global abuse limit on a serverless platform. Configure Vercel Firewall rate limits or shared throttling before opening unrestricted meeting creation publicly.
+Deploy once from the repository root using Vercel's Git integration or the linked CLI. Check `https://your-domain.vercel.app/api/health` returns `{"status":"ok"}`. Open the same domain at `/`, create a meeting, and join its invitation link from another browser/device. Check audio/video, mute controls, screen sharing, and leave/rejoin. An HTTP health response does not verify media transport.
 
-The included commands are checked locally; deploying them on Vercel still requires your Git repository, Vercel project settings, environment variables, and a successful cloud deployment.
+Preview frontend/API traffic stays on the same preview origin. Deployment Protection still applies to that project's public routes; configure access according to your audience. No separate backend preview URL or browser-exposed protection-bypass secret is needed.
+
+Vercel Function duration, concurrency, and plan limits apply to API requests, but meeting media does not pass through these functions. The in-memory API throttle is per instance, not a global serverless abuse limit. Configure Vercel Firewall rate limits or shared throttling before opening unrestricted meeting creation publicly.
+
+Local validation does not publish a deployment. Your Git repository, Vercel account settings, cloud environment variables, and successful deployment remain necessary.
 
 ## Backend: Render, Railway, or a Container Host
 
@@ -80,16 +102,15 @@ The image uses a multi-stage build, production dependencies, and a non-root runt
 
 The image has not been built locally because the Docker Linux daemon was unavailable. Start Docker Desktop before running these commands.
 
-## Frontend: Netlify or Vercel
+## Alternative Frontend Hosting: Netlify
 
 The root `netlify.toml` builds the frontend and publishes `apps/web/dist`.
 
-For either host:
+For a separately hosted frontend:
 
 - Set `VITE_API_BASE_URL=https://your-backend.example.com/api` **before building**.
 - Build: `npm run build -w packages/contracts && npm run build -w apps/web`.
 - Publish/output directory: `apps/web/dist`.
-- On Vercel, select the Vite framework preset and override the build command/output directory as above.
 - Set the backend's `FRONTEND_URL` to the deployed frontend's origin. Redeploy after changing environment variables.
 
 Only public configuration belongs in `VITE_` variables. Keep all LiveKit credentials on the backend. Environment templates remain in each application's root; local environment files are ignored by Git and Docker.

@@ -63,11 +63,11 @@ test('joining uses the entered meeting code', async ({ page }) => {
     expect(requestBody).toEqual({ action: 'join', displayName: 'Sam', code: 'abcd-efgh-jkmn' })
 })
 
-test('shared links open the preview and back returns home', async ({ page }) => {
+test('shared links open the preview and back returns home', async ({ page, baseURL }) => {
     await page.goto('/?room=abcd-efgh-jkmn')
     await expect(page.getByRole('heading', { name: 'Ready to join?' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Join meeting', exact: true })).toBeVisible()
     await page.getByRole('button', { name: 'Back', exact: true }).click()
     await expect(page.getByRole('button', { name: 'New meeting' })).toBeVisible()
-    await expect(page).toHaveURL('http://localhost:5173/')
+    await expect(page).toHaveURL(new URL('/', baseURL).href)
 })

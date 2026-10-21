@@ -1,10 +1,12 @@
 import { defineConfig } from '@playwright/test'
 
+const externalBaseURL = process.env.PLAYWRIGHT_BASE_URL
+
 export default defineConfig({
     testDir: './tests/e2e',
     fullyParallel: true,
     use: {
-        baseURL: 'http://localhost:5173',
+        baseURL: externalBaseURL ?? 'http://localhost:5173',
         trace: 'retain-on-failure',
         launchOptions: { args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] },
     },
@@ -12,7 +14,7 @@ export default defineConfig({
         { name: 'desktop', use: { browserName: 'chromium', viewport: { width: 1440, height: 950 } } },
         { name: 'mobile', use: { browserName: 'chromium', viewport: { width: 390, height: 844 } } },
     ],
-    webServer: [
+    webServer: externalBaseURL ? undefined : [
         {
             command: 'npm run build -w packages/contracts && npm run dev -w apps/api',
             url: 'http://localhost:3001/api/health',

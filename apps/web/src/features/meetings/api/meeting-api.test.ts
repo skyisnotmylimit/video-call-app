@@ -1,14 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { meetingApi } from './meeting-api'
 
-afterEach(() => { vi.unstubAllGlobals() })
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs() })
 
 describe('Meeting API client', () => {
     it('normalizes inputs and validates the returned session', async () => {
+        vi.stubEnv('VITE_API_BASE_URL', undefined)
         const fetchMock = vi.fn().mockResolvedValue(Response.json({ code: 'abcd-efgh-jkmn', token: 'signed-token', serverUrl: 'wss://test.livekit.cloud' }))
         vi.stubGlobal('fetch', fetchMock)
         const session = await meetingApi.enter({ action: 'join', displayName: ' Sam ', code: ' ABCD-EFGH-JKMN ' })
         expect(session.code).toBe('abcd-efgh-jkmn')
+        expect(fetchMock.mock.calls[0][0]).toBe('/api/meetings')
         expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ action: 'join', displayName: 'Sam', code: 'abcd-efgh-jkmn' })
     })
 

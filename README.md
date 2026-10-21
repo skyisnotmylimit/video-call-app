@@ -37,6 +37,7 @@ See [Project Architecture](docs/architecture.md) for the source tree, dependency
 | Command | Purpose |
 | --- | --- |
 | `npm run dev` | Build contracts and run both apps |
+| `npm run dev:vercel` | Run the root Vercel services locally on one origin |
 | `npm run build` | Build contracts, frontend, and backend |
 | `npm test` | Run domain and API-client unit tests |
 | `npm run lint` | Lint frontend and type-check backend/build tools |
@@ -48,7 +49,9 @@ After editing shared contracts, run `npm run build -w packages/contracts` (or re
 
 ## Deployment
 
-See the [Deployment Guide](docs/deployment.md) for backend hosting, the Docker build, frontend hosting, environment variables, and production checks. Existing root commands, API URLs, environment file locations, and Docker build paths are unchanged.
+Deploy **one Vercel project from the repository root** using `vercel.json`. It defines the `api` and `web` services on one domain: `/api/*` reaches NestJS, and other paths reach Vite. Browser requests use the same-origin `/api` URL. No internal runtime binding is needed because the static frontend has no server-side caller.
+
+See the [Deployment Guide](docs/deployment.md) for project setup, environment variables, service development/testing, and alternative hosting. The previous two-project Vercel setup has been replaced.
 
 ## Security and Scope
 

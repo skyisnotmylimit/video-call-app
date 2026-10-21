@@ -75,10 +75,13 @@ package.json
 package-lock.json
 playwright.config.ts
 vitest.config.ts
+vercel.json
 netlify.toml
 ```
 
 Generated output, installed dependencies, local environment files, reports, and editor settings are omitted. Build configuration stays with the app or package it configures. Repository-wide test configuration and orchestration remain at the root so default discovery and existing commands work normally. The backend Dockerfile remains with the backend, with the repository root as its build context.
+
+The root `vercel.json` owns a single Vercel project's service definitions, per-service build settings, and public routing. There are no per-app Vercel configuration files. The `api` service is public at `/api/*`, and the static `web` service handles remaining paths. The browser calls `/api/meetings` on the same origin; there is no server-to-server call and therefore no runtime binding. If a future server-side frontend function calls the API privately, it must declare a caller-side binding and read its generated URL only at runtime.
 
 ## Backend Boundaries
 
@@ -129,6 +132,8 @@ Dependencies flow from app to pages to features/shared. Features must not import
 - Build tools have their own Node TypeScript configuration and are type-checked by the root lint command.
 
 Run `npm test`, `npm run lint`, `npm run build`, and `npm run test:e2e` from the repository root. Backend and contracts entry points remain stable, so startup commands do not depend on internal feature folder names.
+
+Use `npm run dev:vercel` to exercise actual service routing locally. Set `PLAYWRIGHT_BASE_URL` to that origin when running `npm run test:e2e`; the suite then targets the already-running Vercel services rather than starting the legacy two-port dev servers.
 
 ## Adding a Feature
 
